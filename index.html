@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="//treetopflyer.github.com/vcore/lib.js"></script>
+    </head>
+    <body>
+        <script>
+            
+var NN = {};
+
+// dependencies
+NN.Dep = {};
+NN.Dep.Matrix = M;
+
+
+NN.TrainingSet = {};
+NN.TrainingSet.Instances = [];
+NN.TrainingSet.Create = function()
+{
+    var obj = {};
+
+    obj.Members = [];
+    obj.Order = [];
+    
+    NN.TrainingSet.Instances.push(obj);
+    return obj;
+};
+
+NN.TrainingSet.Add = function(inTrainingSet, inType, inData)
+{
+    inTrainingSet.Order.push(inTrainingSet.Members.length);
+    inTrainingSet.Members.push({
+        Input: inData,
+        Output: inType
+    });
+};
+NN.TrainingSet.Randomize = function(inTrainingSet)
+{
+      var newOrder = [];
+      var selection;
+      while(inTrainingSet.Order.length != 0)
+      {
+          selection = Math.floor(inTrainingSet.Order.length * Math.random());
+          inTrainingSet.Order.splice(selection, 1);
+          newOrder.push(selection);
+      }
+};
+
+
+NN.Layer = {};
+NN.Layer.Create = function(sizeIn, sizeOut)
+{
+    var i;
+    var min = [];
+    var max = [];
+    var obj = {};
+    
+    obj.Forward = {};
+    for(i=0; i<sizeIn; i++)
+    {
+        min.push(-0.5);
+        max.push(0.5);
+    }
+    obj.Forward.Matrix = NN.Dep.Matrix.Box([min, max], sizeOut);
+    obj.Forward.StageInput = [];
+    obj.Forward.StageAffine = [];
+    obj.Forward.StageSigmoid = [];
+    
+    obj.Backward = {};
+    obj.Backward.Matrix = NN.Dep.Matrix.Transpose(obj.Forward.Matrix);
+    obj.Backward.StageInput = [];
+    obj.Backward.StageSigmoid = [];
+    obj.Backward.StageAffine = [];
+    
+    obj.LearningRate = 0.1;
+    
+    return obj;
+};
+NN.Layer.Forward = function(inLayer, inInput)
+{
+    inLayer.Forward.StageInput = inInput;
+    inLayer.Forward.StageAffine = NN.Dep.Matrix.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
+    inLayer.Forward.StageSigmoid = NN.Dep.Matrix.Sigmoid(inLayer.Forward.StageAffine);
+    
+    return inLayer.Forward.StageSigmoid;
+};
+NN.Layer.Backward = function(inLayer, inInput)
+{
+    inLayer.Backward.StageInput = inInput;
+    inLayer.Backward.Matrix = NN.Dep.Matrix.Transpose(inLayer.Forward.Matrix);
+    inLayer.Backward.StageSigmoid = NN.Dep.Matrix.Multiply(inLayer.Backward.StageInput, NN.Dep.Matrix.Derivative(inLayer.Forward.StageSigmoid));
+    inLayer.Backward.StageAffine = NN.Dep.Matrix.Transform(inLayer.Backward.Matrix, inLayer.Backward.StageSigmoid);
+    
+    return inLayer.Backward.StageAffine;
+};
+
+NN.Network = {};
+NN.Nework.Create = function()
+{
+    var obj = {};
+    
+    obj.Layers = [];
+    obj.Recording = {};
+    
+    return obj;
+}
+
+        </script>
+        <script>
+var l1 = NN.Layer.Create(3, 10);
+NN.Layer.Forward(l1, [[1, 0, 0]]);
+        </script>
+    </body>
+</html>
