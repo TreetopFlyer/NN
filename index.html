@@ -51,6 +51,8 @@ NN.Layer.Create = function(sizeIn, sizeOut)
     var max = [];
     var obj = {};
     
+    sizeIn++;
+    
     obj.Forward = {};
     for(i=0; i<sizeIn; i++)
     {
@@ -72,7 +74,7 @@ NN.Layer.Create = function(sizeIn, sizeOut)
 };
 NN.Layer.Forward = function(inLayer, inInput)
 {
-    inLayer.Forward.StageInput = inInput;
+    inLayer.Forward.StageInput = M.Pad(inInput); // Pad the input
     inLayer.Forward.StageAffine = M.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
     inLayer.Forward.StageSigmoid = M.Sigmoid(inLayer.Forward.StageAffine);
     
@@ -84,6 +86,7 @@ NN.Layer.Backward = function(inLayer, inInput)
     inLayer.Backward.Matrix = M.Transpose(inLayer.Forward.Matrix);
     inLayer.Backward.StageSigmoid = M.Derivative(inLayer.Forward.StageSigmoid);
     inLayer.Backward.StageAffine = M.Transform(inLayer.Backward.Matrix, inLayer.Backward.StageSigmoid);
+    inLayer.Backward.StageAffine = M.Unpad(inLayer.Backward.StageAffine); // Unpad the output
     
     return inLayer.Backward.StageAffine;
 };
@@ -114,17 +117,15 @@ NN.Network = {};
 NN.Network.Create = function()
 {
     var obj = {};
+    var i;    
     
     obj.Layers = [];
     obj.LearningRate = 0.1;
-    
-    var i;
+
     for(i=0; i<arguments.length-1; i++)
     {
         obj.Layers.push(NN.Layer.Create(arguments[i], arguments[i+1]));
     }
-    
-    obj.Recording = {};
     
     return obj;
 };
@@ -134,17 +135,19 @@ NN.Network.Observe = function(inNetwork, inBatch)
       var i;
       for(i=0; i<inNetwork.Layers.length; i++)
       {
-          console.log("layer", i, "observing");
           input = NN.Layer.Forward(inNetwork.Layers[i], input);
       }
 };
-NN.Network.Learn = function(inNetwork, inBatch)
+NN.Network.Error = function(inNetwork, inTraining)
 {
-      var input = inBatch;
+      return M.Subtract(inNetwork.Layers[inNetwork.layers.length-1].Forward.StageSigmoid, inTraining);
+};
+NN.Network.Learn = function(inNetwork, inError)
+{
+      var input = inError;
       var i;
       for(i=inNetwork.Layers.length-1; i>=0; i--)
       {
-          console.log("layer", i, "learning");
           input = NN.Layer.Backward(inNetwork.Layers[i], input);
           NN.Layer.Adjust(inNetwork.Layers[i], inNetwork.LearningRate);
       }
@@ -154,7 +157,7 @@ NN.Network.Learn = function(inNetwork, inBatch)
         <script>
 
 var n1 = NN.Network.Create(2, 10, 3);
-NN.Network.Observe(n1, [[0, 1, 0]]);
+NN.Network.Observe(n1, [[0, 1]]);
 NN.Network.Learn(n1, [[1, 0, -1]]);
 
         </script>
