@@ -2,74 +2,140 @@
 <html>
     <head>
         <script src="//treetopflyer.github.com/vcore/lib.js"></script>
-<script>
-
-var Neuron = {};
-Neuron.Create = function(inSize)
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+        <style>
+body
 {
-    var i;
-    var obj = {};
+    margin:300px;
+    background:#aaa;    
+}
+.Graph
+{
+    position:relative;
+    float:left;
+    border:1px solid #000;
     
-    obj.Weights = [];
-    for(i=0; i<inSize; i++)
-    {
-        obj.Weights[i] = Math.random();
-    }
-    obj.Bias = Math.random();
+    perspective:500px;
+    transform-style: preserve-3d;
+}    
+.Graph > .Center
+{
+    position:absolute;
+    width:100%;
+    height:100%;
+    top:0%;
+    left:0%;
+    border:1px solid #000;
     
-    
-    obj.Linear = function(inInput)
-    {
-        var i;
-        var sum = 0;
-        
-        for(i=0; i<obj.Weights.length; i++)
-            sum += obj.Weights[i]*inInput[i];
-            
-        return sum + obj.Bias;
-    };
-    obj.Sigmoid = function(inLinear)
-    {
-        return 1 / (1 + Math.pow(Math.E, -inLinear));
-    };
-    obj.Derivative = function(inSigmoid)
-    {
-          return inSigmoid * (1 - inSigmoid);
-    };
-    
-    obj.Learn = function(inInput, inOutput)
-    {
-        var i;
-        var linear = obj.Linear(inInput);
-        var sigmoid = obj.Sigmoid(linear);
-        var derivative = obj.Derivative(sigmoid);
-        var miss = sigmoid - inOutput;
-        
-        for(i=0; i<obj.Weights.length; i++)
-        {
-            obj.Weights[i] -= 0.1 * miss * derivative * inInput[i];
-        }
-        obj.Bias -= 0.1 * miss * derivative * 1;
-    };
-    obj.Observe = function(inInput)
-    {
-        return obj.Sigmoid(obj.Linear(inInput));
-    };
-    
-    return obj;
+    transform-style: preserve-3d;
+    transform:rotateY(0deg);
 }
 
-var n1 = Neuron.Create(2);
-var i;
-for(i=0; i<1000; i++)
+.Graph .Point
 {
-    n1.Learn([0, 0], 0);
-    n1.Learn([1, 1], 1);
+    position:absolute;
+    width:1px;
+    height:1px;
+    
+    transform-style: preserve-3d;
+    transform:translate3d(0, 0, 0);
 }
-
-</script>
+.Graph .Point > .Fill
+{
+    position:absolute;
+    top:-5px;
+    left:-5px;
+    width:10px;
+    height:10px;
+    background:rgb(255, 0, 0);
+    border:1px solid #fff;
+    
+    transform-style: preserve-3d; 
+    transform:rotateY(0deg);
+}
+        </style>
     </head>
     <body>
+        <script>
+            
+var Graph = {};
+Graph.Create = function(inJQParent)
+{
+    var obj = {};
+    obj.Size = 300;
+
+    obj.Rotate = function(inAngle)
+    {
+        obj.JQ.Center.css({"transform":"rotateY("+inAngle+"deg)"});
+        obj.JQ.Centers.css({"transform":"rotateY("+(-inAngle)+"deg)"});
+    };
+
+    obj.JQ = {};
+    obj.JQ.Graph = $("<div class=\"Graph\" style=\"width:"+obj.Size+"px; height:"+obj.Size+"px;\"></div>");
+    obj.JQ.Center = $("<div class=\"Center\"></div>");
+    obj.JQ.Graph.append(obj.JQ.Center);
+    obj.JQ.Points = $();
+    obj.JQ.Centers = $();
+    
+    obj.MapColor = function(inColor)
+    {
+        if(inColor[2] === undefined)
+            inColor[2] = 0;
+        
+        if(inColor[1] === undefined)
+            inColor[1] = 0;
+            
+        return "rgb("+(inColor[0]*255)+", "+(inColor[1]*255)+", "+(inColor[2]*255)+")";
+    };
+    
+    obj.MapPosition = function(inPos)
+    {
+        if(inPos[2] === undefined)
+            inPos[2] = 0;
+        
+        if(inPos[1] === undefined)
+            inPos[1] = 0;
+            
+        return "translate3d("+(inPos[0]*obj.Size)+"px, "+(inPos[1]*obj.Size)+"px, "+(inPos[2]*obj.Size)+"px)";
+    };
+    
+    obj.Point = function(inPos, inColor)
+    {
+        var jqPoint = $("<div class=\"Point\" style=\"transform:"+obj.MapPosition(inPos)+";\"></div>");
+        var jqCenter = $("<div class=\"Fill\" style=\"background:"+obj.MapColor(inColor)+";\"></div>");
+        jqPoint.append(jqCenter);
+        
+        obj.JQ.Points = obj.JQ.Points.add(jqPoint);
+        obj.JQ.Centers = obj.JQ.Centers.add(jqCenter);
+        
+        obj.JQ.Center.append(jqPoint);
+    };
+
+    obj.Points = function(inTrainingSet)
+    {
+          var i;
+          for(i=0; i<inTrainingSet.Order.length; i++)
+          {
+              obj.Point(inTrainingSet.Input[i], inTrainingSet.Output[i]);
+          }
+    };
+    
+    obj.Move = function(inMatrix)
+    {
+        var i;
+        var pos;
+        for(i=0; i<inMatrix.length; i++)
+        {
+            css = obj.MapPosition(inMatrix[i]);
+            obj.JQ.Points.eq(i).css({"transform":css});
+        } 
+    };
+    
+    inJQParent.append(obj.JQ.Graph);
+ 
+    return obj;   
+}
+        </script>
         <script>
             
 var NN = {};
@@ -108,7 +174,24 @@ NN.TrainingSet.Randomize = function(inTrainingSet)
 };
 
 
-
+NN.Playback = {};
+NN.Playback.Create = function()
+{
+    var obj = {};
+    obj = {};
+    obj.Frames = [];
+    obj.Capture = function(inNetwork)
+    {
+        var i;
+        var frame = [];
+        for(i=0; i<inNetwork.Layers.length; i++)
+        {
+            frame.push(inNetwork.Layers[i].Forward.Matrix);
+        }
+        obj.Frames.push(frame);
+    };
+    return obj;
+};
 
 NN.Network = {};
 NN.Network.Instances = [];
@@ -120,7 +203,7 @@ NN.Network.Create = function()
     obj.Layers = [];
     obj.LearningRate = 0.1;
     obj.Error = [];
-
+    
     for(i=0; i<arguments.length-1; i++)
     {
         obj.Layers.push(NN.Layer.Create(arguments[i], arguments[i+1]));
@@ -169,17 +252,24 @@ NN.Network.Stochastic = function(inNetwork, inTrainingSet, inIterations)
 {
     var i, j;
     var current;
+    
+    var playback = NN.Playback.Create();
+    
     for(i=0; i<inIterations; i++)
     {
         NN.TrainingSet.Randomize(inTrainingSet);
         for(j=0; j<inTrainingSet.Order.length; j++)
         {
+            playback.Capture(inNetwork);
             current = inTrainingSet.Order[j];
             NN.Network.Observe(inNetwork, [inTrainingSet.Input[current]]);
             inNetwork.Error = NN.Network.Error(inNetwork, [inTrainingSet.Output[current]]);
             NN.Network.Learn(inNetwork, inNetwork.Error);
         }
     }
+    playback.Capture(inNetwork);
+    return playback;
+    
 };
 
 
@@ -299,48 +389,31 @@ NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
 var ts1 = NN.TrainingSet.Create();
 NN.TrainingSet.Add(ts1, [0], [0, 0]);
 NN.TrainingSet.Add(ts1, [0], [0.10, 0.5]);
-NN.TrainingSet.Add(ts1, [0], [-0.8, 0.10]);
-NN.TrainingSet.Add(ts1, [0], [-2.0, 0.5]);
+NN.TrainingSet.Add(ts1, [0], [-0.08, 0.10]);
+NN.TrainingSet.Add(ts1, [0], [-0.2, 0.5]);
 
-NN.TrainingSet.Add(ts1, [1], [1.20, 1.11]);
+NN.TrainingSet.Add(ts1, [1], [1.10, 1.11]);
 NN.TrainingSet.Add(ts1, [1], [0.80, 1.30]);
-NN.TrainingSet.Add(ts1, [1], [0.75, 1.90]);
-NN.TrainingSet.Add(ts1, [1], [1.30, 0.80]);
+NN.TrainingSet.Add(ts1, [1], [0.75, 1.10]);
+NN.TrainingSet.Add(ts1, [1], [1.06, 0.80]);
 
-var n1 = NN.Network.Create(2, 10, 1);
-console.log(NN.Network.Observe(n1, [[0, 0], [1, 1]]));
-NN.Network.Batch(n1, ts1, 500);
-console.log(NN.Network.Observe(n1, [[0, 0], [1, 1]]));
-
-
-/*
-var error;
-var l1 = NN.Layer.Create(2, 1);
-l1.Forward.Matrix = [];
-l1.Forward.Matrix.push([0.2, 0.1, 0.8]);
-
-function test()
-{
-    NN.Layer.Forward(l1, [[0, 0], [1, 1]]);
-    error = NN.Layer.Error(l1, [[0], [1]]);
-    NN.Layer.Backward(l1, error);
-    NN.Layer.Adjust(l1, 0.1);
-}
-
-function bigTest()
-{
-    var i;
-    for(i=0; i<1000; i++)
-    {
-        test();
-    }
-}
-
-bigTest();
-*/
+var n1 = NN.Network.Create(2, 4, 1);
+var pb1 = NN.Network.Batch(n1, ts1, 500);
 
 
 
+var g1 = Graph.Create($("body"));
+g1.Points(ts1);
+
+NN.Network.Observe(n1, ts1.Input);
+
+var g2 = Graph.Create($("body"));
+g2.Points(ts1);
+g2.Move(n1.Layers[0].Forward.StageSigmoid);
+
+var g3 = Graph.Create($("body"));
+g3.Points(ts1);
+g3.Move(n1.Layers[1].Forward.StageSigmoid);
 
 
         </script>
