@@ -219,7 +219,6 @@ NN.Layer.Forward = function(inLayer, inInput)
     inLayer.Forward.StageInput = M.Pad(inInput); // Pad the input
     inLayer.Forward.StageAffine = M.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
     inLayer.Forward.StageSigmoid = M.Sigmoid(inLayer.Forward.StageAffine);
-    inLayer.Forward.StageDerivative = M.Derivative(inLayer.Forward.StageSigmoid);
     
     return inLayer.Forward.StageSigmoid;
 };
@@ -229,9 +228,21 @@ NN.Layer.Error = function(inLayer, inTarget)
 };
 NN.Layer.Backward = function(inLayer, inInput)
 {
-    inLayer.Backward.StageInput = inInput;
-    inLayer.Backward.StageDerivative = M.Multiply(inLayer.Backward.StageInput, inLayer.Forward.StageDerivative)
+    /* We need the derivative of the forward pass, but only during the backward pass.
+    That's why-- even though it "belongs" to the forward pass-- it is being calculated here. */
+    inLayer.Forward.StageDerivative = M.Derivative(inLayer.Forward.StageSigmoid);
+    
+    /* This transpose matrix is for sending the error back to a previous layer.
+    And again, even though it is derived directly from the forward matrix, it is only needed during the backward pass so we calculate it here.*/
     inLayer.Backward.Matrix = M.Transpose(inLayer.Forward.Matrix);
+    
+
+
+    /* When the error vector arrives at a layer, it always needs to be multiplied (read 'supressed') by the derivative of
+    what the layer output earlier during the forward pass.
+    So despite its name, Backward.StageDerivative contains the result of this *multiplication* and not some new derivative calculation.*/
+    inLayer.Backward.StageInput = inInput;
+    inLayer.Backward.StageDerivative = M.Multiply(inLayer.Backward.StageInput, inLayer.Forward.StageDerivative);
     inLayer.Backward.StageAffine = M.Transform(inLayer.Backward.Matrix, inLayer.Backward.StageDerivative);
     
     return M.Unpad(inLayer.Backward.StageAffine);// Unpad the output
@@ -248,10 +259,14 @@ NN.Layer.Adjust = function(inLayer, inLearningRate)
     {
         deltas = [];
         
+        /* For the Ith vector in the batch... */
         vector = inLayer.Forward.StageInput[i];
         for(j=0; j<inLayer.Forward.Matrix.length; j++)
         {
-            deltas[j] = V.Scale(vector, (inLayer.Backward.StageDerivative[i][j] * inLearningRate) / batchSize);
+            /* Change the Jth member of Forward.Matrix by:
+            the Ith input vector, multiplied by the Jth component of the Ith Backward.StageDerivative (the input error times the output derivative, pre-calculated above),
+            factoring in the learning rate and batch size */
+            deltas[j] = V.Scale(vector, (inLayer.Backward.StageDerivative[i][j] * inLearningRate) / 2);
         }
         
         inLayer.Forward.Matrix = M.Subtract(inLayer.Forward.Matrix, deltas);
@@ -259,6 +274,7 @@ NN.Layer.Adjust = function(inLayer, inLearningRate)
 };
 NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
 {
+    /* this method is ONLY for testing individual layers, and does not translate to network-level training */
     var i, j;
     var current;
     var error;
@@ -282,16 +298,22 @@ NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
 
 var ts1 = NN.TrainingSet.Create();
 NN.TrainingSet.Add(ts1, [0], [0, 0]);
-NN.TrainingSet.Add(ts1, [0], [10, 5]);
-NN.TrainingSet.Add(ts1, [0], [-8, 10]);
-NN.TrainingSet.Add(ts1, [0], [-20, 5]);
+NN.TrainingSet.Add(ts1, [0], [0.10, 0.5]);
+NN.TrainingSet.Add(ts1, [0], [-0.8, 0.10]);
+NN.TrainingSet.Add(ts1, [0], [-2.0, 0.5]);
 
-NN.TrainingSet.Add(ts1, [1], [120, 111]);
-NN.TrainingSet.Add(ts1, [1], [80, 130]);
-NN.TrainingSet.Add(ts1, [1], [75, 190]);
-NN.TrainingSet.Add(ts1, [1], [130, 80]);
+NN.TrainingSet.Add(ts1, [1], [1.20, 1.11]);
+NN.TrainingSet.Add(ts1, [1], [0.80, 1.30]);
+NN.TrainingSet.Add(ts1, [1], [0.75, 1.90]);
+NN.TrainingSet.Add(ts1, [1], [1.30, 0.80]);
+
+var n1 = NN.Network.Create(2, 10, 1);
+console.log(NN.Network.Observe(n1, [[0, 0], [1, 1]]));
+NN.Network.Batch(n1, ts1, 500);
+console.log(NN.Network.Observe(n1, [[0, 0], [1, 1]]));
 
 
+/*
 var error;
 var l1 = NN.Layer.Create(2, 1);
 l1.Forward.Matrix = [];
@@ -315,15 +337,9 @@ function bigTest()
 }
 
 bigTest();
-
-
-/*
-console.log(NN.Layer.Forward(l1, [[0, 0]]));
-console.log(NN.Layer.Forward(l1, [[1, 1]]));
-NN.Layer.Stochastic(l1, ts1, 500);
-console.log(NN.Layer.Forward(l1, [[0, 0]]));
-console.log(NN.Layer.Forward(l1, [[1, 1]]));
 */
+
+
 
 
 
