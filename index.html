@@ -2,6 +2,41 @@
 <html>
     <head>
         <script src="//treetopflyer.github.com/vcore/lib.js"></script>
+<script>
+
+var Neuron = {};
+Neuron.Create = function(inSize)
+{
+    var i;
+    var obj = {};
+    
+    obj.Weights = [];
+    for(i=0; i<inSize; i++)
+    {
+        obj.Weights[i] = Math.random();
+    }
+    obj.Bias = Math.random();
+    
+    obj.Observe = function(inInput)
+    {
+        var i;
+        var sum = 0;
+        
+        for(i=0; i<obj.Weights.length; i++)
+            sum += obj.Weights[i]*inInput[i];
+            
+        return sum + obj.Bias;
+    }
+    
+    obj.Learn = function()
+    {
+        
+    }
+    
+    return obj;
+}
+
+</script>
     </head>
     <body>
         <script>
@@ -41,93 +76,6 @@ NN.TrainingSet.Randomize = function(inTrainingSet)
       inTrainingSet.Order = newOrder;
 };
 
-
-
-NN.Layer = {};
-NN.Layer.Create = function(sizeIn, sizeOut)
-{
-    var i;
-    var min = [];
-    var max = [];
-    var obj = {};
-    
-    sizeIn++;
-    
-    obj.Forward = {};
-    for(i=0; i<sizeIn; i++)
-    {
-        min.push(0);
-        max.push(1);
-    }
-    obj.Forward.Matrix = M.Box([min, max], sizeOut);
-    obj.Forward.StageInput = [];
-    obj.Forward.StageAffine = [];
-    obj.Forward.StageSigmoid = [];
-    
-    obj.Backward = {};
-    obj.Backward.Matrix = M.Transpose(obj.Forward.Matrix);
-    obj.Backward.StageInput = [];
-    obj.Backward.StageSigmoid = [];
-    obj.Backward.StageAffine = [];
-    
-    return obj;
-};
-NN.Layer.Forward = function(inLayer, inInput)
-{
-    inLayer.Forward.StageInput = M.Pad(inInput); // Pad the input
-    inLayer.Forward.StageAffine = M.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
-    inLayer.Forward.StageSigmoid = M.Sigmoid(inLayer.Forward.StageAffine);
-    
-    return inLayer.Forward.StageSigmoid;
-};
-NN.Layer.Backward = function(inLayer, inInput)
-{
-    inLayer.Backward.StageInput = inInput;
-    inLayer.Backward.Matrix = M.Transpose(inLayer.Forward.Matrix);
-    inLayer.Backward.StageSigmoid = M.Derivative(inLayer.Forward.StageSigmoid);
-    inLayer.Backward.StageAffine = M.Transform(inLayer.Backward.Matrix, inLayer.Backward.StageSigmoid);
-    inLayer.Backward.StageAffine = M.Unpad(inLayer.Backward.StageAffine); // Unpad the output
-    
-    return inLayer.Backward.StageAffine;
-};
-NN.Layer.Adjust = function(inLayer, inLearningRate)
-{
-    var deltas;
-    var vector;
-    var scalar;
-    var batchSize = inLayer.Forward.StageInput.length;
-    var i, j;
-    
-    for(i=0; i<batchSize; i++)
-    {
-        deltas = [];
-        vector = inLayer.Forward.StageInput[i];
-        for(j=0; j<inLayer.Forward.Matrix.length; j++)
-        {
-            scalar = inLayer.Backward.StageSigmoid[i][j] * (-inLearningRate) / batchSize;
-            deltas[j] = V.Scale(vector, scalar);
-        }
-        inLayer.Forward.Matrix = M.Add(inLayer.Forward.Matrix, deltas);
-    }
-};
-NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
-{
-    var i, j;
-    var current;
-    var error;
-    for(i=0; i<inIterations; i++)
-    {
-        NN.TrainingSet.Randomize(inTrainingSet);
-        for(j=0; j<inTrainingSet.Order.length; j++)
-        {
-            current = inTrainingSet.Order[j];
-            NN.Layer.Forward(inLayer, [inTrainingSet.Input[current]]);
-            error = M.Subtract(inLayer.Forward.StageSigmoid, [inTrainingSet.Output[current]])
-            NN.Layer.Backward(inLayer, error);
-            NN.Layer.Adjust(inLayer, 0.1);
-        }
-    }
-};
 
 
 
@@ -203,6 +151,100 @@ NN.Network.Stochastic = function(inNetwork, inTrainingSet, inIterations)
     }
 };
 
+
+
+NN.Layer = {};
+NN.Layer.Create = function(sizeIn, sizeOut)
+{
+    var i;
+    var min = [];
+    var max = [];
+    var obj = {};
+    
+    sizeIn++;
+    
+    obj.Forward = {};
+    for(i=0; i<sizeIn; i++)
+    {
+        min.push(0);
+        max.push(1);
+    }
+    obj.Forward.Matrix = M.Box([min, max], sizeOut);
+    obj.Forward.StageInput = [];
+    obj.Forward.StageAffine = [];
+    obj.Forward.StageSigmoid = [];
+    
+    obj.Backward = {};
+    obj.Backward.Matrix = M.Transpose(obj.Forward.Matrix);
+    obj.Backward.StageInput = [];
+    obj.Backward.StageSigmoid = [];
+    obj.Backward.StageAffine = [];
+    
+    return obj;
+};
+NN.Layer.Forward = function(inLayer, inInput)
+{
+    inLayer.Forward.StageInput = M.Pad(inInput); // Pad the input
+    inLayer.Forward.StageAffine = M.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
+    inLayer.Forward.StageSigmoid = M.Sigmoid(inLayer.Forward.StageAffine);
+    
+    return inLayer.Forward.StageSigmoid;
+};
+NN.Layer.Backward = function(inLayer, inInput)
+{
+    inLayer.Backward.StageInput = inInput;
+    inLayer.Backward.Matrix = M.Transpose(inLayer.Forward.Matrix);
+    inLayer.Backward.StageSigmoid = M.Derivative(inLayer.Forward.StageSigmoid);
+    inLayer.Backward.StageAffine = M.Transform(inLayer.Backward.Matrix, inLayer.Backward.StageSigmoid);
+    inLayer.Backward.StageAffine = M.Unpad(inLayer.Backward.StageAffine); // Unpad the output
+    
+    return inLayer.Backward.StageAffine;
+};
+NN.Layer.Error = function(inLayer, inTarget)
+{
+    return M.Subtract(inTarget, inLayer.Forward.StageSigmoid);
+};
+NN.Layer.Adjust = function(inLayer, inLearningRate)
+{
+    var deltas;
+    var vector;
+    var scalar;
+    var batchSize = inLayer.Forward.StageInput.length;
+    var i, j;
+    
+    for(i=0; i<batchSize; i++)
+    {
+        deltas = [];
+        vector = inLayer.Forward.StageInput[i];
+        for(j=0; j<inLayer.Forward.Matrix.length; j++)
+        {
+            //scalar = inLayer.Backward.StageSigmoid[i][j] * (-inLearningRate) / batchSize;
+            scalar = -inLearningRate;
+            deltas[j] = V.Scale(vector, scalar);
+        }
+        inLayer.Forward.Matrix = M.Add(inLayer.Forward.Matrix, deltas);
+    }
+};
+NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
+{
+    var i, j;
+    var current;
+    var error;
+    for(i=0; i<inIterations; i++)
+    {
+        NN.TrainingSet.Randomize(inTrainingSet);
+        for(j=0; j<inTrainingSet.Order.length; j++)
+        {
+            current = inTrainingSet.Order[j];
+            NN.Layer.Forward(inLayer, [inTrainingSet.Input[current]]);
+            error = M.Subtract(inLayer.Forward.StageSigmoid, [inTrainingSet.Output[current]]);
+            NN.Layer.Backward(inLayer, error);
+            NN.Layer.Adjust(inLayer, 0.1);
+        }
+    }
+};
+
+
         </script>
         <script>
 
@@ -217,13 +259,35 @@ NN.TrainingSet.Add(ts1, [1], [80, 130]);
 NN.TrainingSet.Add(ts1, [1], [75, 190]);
 NN.TrainingSet.Add(ts1, [1], [130, 80]);
 
+var error;
 var l1 = NN.Layer.Create(2, 1);
+l1.Forward.Matrix = [];
+l1.Forward.Matrix.push([0.2, 0.1, 0.8]);
 
+function test()
+{
+    NN.Layer.Forward(l1, [[0, 0], [1, 1]]);
+    error = NN.Layer.Error(l1, [[0], [1]]);
+    NN.Layer.Backward(l1, error);
+    NN.Layer.Adjust(l1, 0.1);
+}
+
+function bigTest()
+{
+    var i;
+    for(i=0; i<20; i++)
+    {
+        test();
+    }
+}
+
+/*
 console.log(NN.Layer.Forward(l1, [[0, 0]]));
 console.log(NN.Layer.Forward(l1, [[1, 1]]));
 NN.Layer.Stochastic(l1, ts1, 500);
 console.log(NN.Layer.Forward(l1, [[0, 0]]));
 console.log(NN.Layer.Forward(l1, [[1, 1]]));
+*/
 
 
 
