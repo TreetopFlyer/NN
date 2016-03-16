@@ -116,7 +116,7 @@ Graph.Create = function(inJQParent)
           var i;
           for(i=0; i<inTrainingSet.Order.length; i++)
           {
-              obj.Point(inTrainingSet.Input[i], inTrainingSet.Output[i]);
+              obj.Point(V.Clone(inTrainingSet.Input[i]), V.Clone(inTrainingSet.Output[i]));
           }
     };
     
@@ -306,7 +306,7 @@ NN.Layer.Create = function(sizeIn, sizeOut)
 };
 NN.Layer.Forward = function(inLayer, inInput)
 {
-    inLayer.Forward.StageInput = M.Pad(inInput); // Pad the input
+    inLayer.Forward.StageInput = M.Pad(M.Clone(inInput)); // Pad the input
     inLayer.Forward.StageAffine = M.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
     inLayer.Forward.StageSigmoid = M.Sigmoid(inLayer.Forward.StageAffine);
     
@@ -397,15 +397,23 @@ NN.TrainingSet.Add(ts1, [1], [0.80, 1.30]);
 NN.TrainingSet.Add(ts1, [1], [0.75, 1.10]);
 NN.TrainingSet.Add(ts1, [1], [1.06, 0.80]);
 
-var n1 = NN.Network.Create(2, 4, 1);
-var pb1 = NN.Network.Batch(n1, ts1, 500);
+var b1 = M.Bounds(ts1.Input);
+ts1.Input = M.GlobalToLocal(ts1.Input, b1);
 
+console.log(ts1.Input[0]);
+var n1 = NN.Network.Create(2, 10, 1);
+var pb1 = NN.Network.Batch(n1, ts1, 1000);
+console.log(ts1.Input[0]);
 
 
 var g1 = Graph.Create($("body"));
 g1.Points(ts1);
 
+console.log(ts1.Input[0]);
+
 NN.Network.Observe(n1, ts1.Input);
+
+console.log(ts1.Input[0]);
 
 var g2 = Graph.Create($("body"));
 g2.Points(ts1);
