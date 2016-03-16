@@ -291,7 +291,7 @@ NN.TrainingSet.Add(ts1, [1], [80, 130]);
 NN.TrainingSet.Add(ts1, [1], [75, 190]);
 NN.TrainingSet.Add(ts1, [1], [130, 80]);
 
-/*
+
 var error;
 var l1 = NN.Layer.Create(2, 1);
 l1.Forward.Matrix = [];
@@ -308,12 +308,13 @@ function test()
 function bigTest()
 {
     var i;
-    for(i=0; i<20; i++)
+    for(i=0; i<1000; i++)
     {
         test();
     }
 }
-*/
+
+bigTest();
 
 
 /*
