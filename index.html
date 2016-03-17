@@ -6,7 +6,7 @@
         <style>
 body
 {
-    margin:300px;
+    margin:100px;
     background:#aaa;    
 }
 .Graph
@@ -48,7 +48,8 @@ body
     width:10px;
     height:10px;
     background:rgb(255, 0, 0);
-    border:1px solid #fff;
+    /*border:1px solid #fff;*/
+    border-radius:10px;
     
     transform-style: preserve-3d; 
     transform:rotateY(0deg);
@@ -126,7 +127,7 @@ Graph.Create = function(inJQParent)
         var pos;
         for(i=0; i<inMatrix.length; i++)
         {
-            css = obj.MapPosition(inMatrix[i]);
+            css = obj.MapPosition(V.Clone(inMatrix[i]));
             obj.JQ.Points.eq(i).css({"transform":css});
         } 
     };
@@ -159,6 +160,14 @@ NN.TrainingSet.Add = function(inTrainingSet, inType, inData)
     inTrainingSet.Input.push(inData);
     inTrainingSet.Output.push(inType);
     inTrainingSet.Order.push(inTrainingSet.Order.length);
+};
+NN.TrainingSet.AddCloud = function(inTrainingSet, inLabel, inCloud)
+{
+    var i;
+    for(i=0; i<inCloud.length; i++)
+    {
+        NN.TrainingSet.Add(inTrainingSet, inLabel, inCloud[i]);
+    }
 };
 NN.TrainingSet.Randomize = function(inTrainingSet)
 {
@@ -224,7 +233,7 @@ NN.Network.Observe = function(inNetwork, inBatch)
 };
 NN.Network.Error = function(inNetwork, inTraining)
 {
-      return M.Subtract(inNetwork.Layers[inNetwork.Layers.length-1].Forward.StageSigmoid,  inTraining);
+      return M.Subtract(inNetwork.Layers[inNetwork.Layers.length-1].Forward.StageSigmoid, inTraining);
 };
 NN.Network.Learn = function(inNetwork, inError)
 {
@@ -260,15 +269,15 @@ NN.Network.Stochastic = function(inNetwork, inTrainingSet, inIterations)
         NN.TrainingSet.Randomize(inTrainingSet);
         for(j=0; j<inTrainingSet.Order.length; j++)
         {
-            playback.Capture(inNetwork);
+            //playback.Capture(inNetwork);
             current = inTrainingSet.Order[j];
             NN.Network.Observe(inNetwork, [inTrainingSet.Input[current]]);
             inNetwork.Error = NN.Network.Error(inNetwork, [inTrainingSet.Output[current]]);
             NN.Network.Learn(inNetwork, inNetwork.Error);
         }
     }
-    playback.Capture(inNetwork);
-    return playback;
+    //playback.Capture(inNetwork);
+    //return playback;
     
 };
 
@@ -287,7 +296,7 @@ NN.Layer.Create = function(sizeIn, sizeOut)
     obj.Forward = {};
     for(i=0; i<sizeIn; i++)
     {
-        min.push(0);
+        min.push(-1);
         max.push(1);
     }
     obj.Forward.Matrix = M.Box([min, max], sizeOut);
@@ -356,7 +365,7 @@ NN.Layer.Adjust = function(inLayer, inLearningRate)
             /* Change the Jth member of Forward.Matrix by:
             the Ith input vector, multiplied by the Jth component of the Ith Backward.StageDerivative (the input error times the output derivative, pre-calculated above),
             factoring in the learning rate and batch size */
-            deltas[j] = V.Scale(vector, (inLayer.Backward.StageDerivative[i][j] * inLearningRate) / 2);
+            deltas[j] = V.Scale(vector, (inLayer.Backward.StageDerivative[i][j] * inLearningRate) / batchSize);
         }
         
         inLayer.Forward.Matrix = M.Subtract(inLayer.Forward.Matrix, deltas);
@@ -387,42 +396,54 @@ NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
         <script>
 
 var ts1 = NN.TrainingSet.Create();
-NN.TrainingSet.Add(ts1, [0], [0, 0]);
-NN.TrainingSet.Add(ts1, [0], [0.10, 0.5]);
-NN.TrainingSet.Add(ts1, [0], [-0.08, 0.10]);
-NN.TrainingSet.Add(ts1, [0], [-0.2, 0.5]);
 
-NN.TrainingSet.Add(ts1, [1], [1.10, 1.11]);
-NN.TrainingSet.Add(ts1, [1], [0.80, 1.30]);
-NN.TrainingSet.Add(ts1, [1], [0.75, 1.10]);
-NN.TrainingSet.Add(ts1, [1], [1.06, 0.80]);
+NN.TrainingSet.AddCloud(ts1, [1], M.Box([[0, 0], [0.4, 1.0]], 5));// black upright
+NN.TrainingSet.AddCloud(ts1, [1], M.Box([[0, 1], [1.5, 1.4]], 5));
 
-var b1 = M.Bounds(ts1.Input);
-ts1.Input = M.GlobalToLocal(ts1.Input, b1);
+NN.TrainingSet.AddCloud(ts1, [0], M.Box([[0.8, 0], [1.0, 0.7]], 5));
+NN.TrainingSet.AddCloud(ts1, [0], M.Box([[0, -0.3], [1.0, -0.1]], 5));
 
-console.log(ts1.Input[0]);
-var n1 = NN.Network.Create(2, 10, 1);
-var pb1 = NN.Network.Batch(n1, ts1, 1000);
-console.log(ts1.Input[0]);
+NN.TrainingSet.AddCloud(ts1, [0], M.Box([[0, 1.5], [1.0, 1.8]], 5));
 
+
+ts1.Input = M.GlobalToLocal(ts1.Input, M.Bounds(ts1.Input));
+
+var n1 = NN.Network.Create(2, 10, 4, 1);
+n1.LearningRate = 0.2;
+var pb1 = NN.Network.Batch(n1, ts1, 20000);
+NN.Network.Observe(n1, ts1.Input);
 
 var g1 = Graph.Create($("body"));
 g1.Points(ts1);
 
-console.log(ts1.Input[0]);
+/*
+var g2a = Graph.Create($("body"));
+g2a.Points(ts1);
+g2a.Move(M.GlobalToLocal(n1.Layers[0].Forward.StageAffine, M.Bounds(n1.Layers[0].Forward.StageAffine)));
+*/
 
-NN.Network.Observe(n1, ts1.Input);
+/*
+var g2b = Graph.Create($("body"));
+g2b.Points(ts1);
+g2b.Move(n1.Layers[0].Forward.StageSigmoid);
+*/
 
-console.log(ts1.Input[0]);
+/*
+var g3a = Graph.Create($("body"));
+g3a.Points(ts1);
+g3a.Move(M.GlobalToLocal(n1.Layers[1].Forward.StageAffine, M.Bounds(n1.Layers[1].Forward.StageAffine)));
+*/
 
-var g2 = Graph.Create($("body"));
-g2.Points(ts1);
-g2.Move(n1.Layers[0].Forward.StageSigmoid);
+var g3b = Graph.Create($("body"));
+g3b.Points(ts1);
+g3b.Move(n1.Layers[2].Forward.StageSigmoid);
 
-var g3 = Graph.Create($("body"));
-g3.Points(ts1);
-g3.Move(n1.Layers[1].Forward.StageSigmoid);
 
+/*
+var g4 = Graph.Create($("body"));
+g4.Points(ts1);
+g4.Move(n1.Layers[2].Forward.StageSigmoid);
+*/
 
         </script>
     </body>
