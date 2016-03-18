@@ -1,5 +1,5 @@
 # NN
-Neural Network
+Neural Network library for JavaScript (requires my vector/matrx library vcore: http://treetopflyer.github.io/vcore/lib.js)
 
 ## NN.TrainingSet
 
@@ -16,10 +16,6 @@ Append the vector inDataVector to inTrainingSet under the label inLabelVector
 `NN.TrainingSet.AddCloud(inTrainingSet, inLabelVector, inDataVectors)`
 Static Method:
 Append all of the vectors in inDataVectors to inTrainingSet, where each vector will be labeled with inLabelVector
-
-`NN.TrainingSet.Randomize(inTrainingSet)`
-Static Method:
-Randomize the order of the TrainingSet inTrainingSet
 
 ### Example useage
 
@@ -93,3 +89,31 @@ Static Method: Present the Network inNetwork with the un-labeled data inData. Re
     NN.Network.Batch(nn, ts, 1000);
     NN.Observe(nn1, [[0, 0]]); // should output ~0
     NN.Observe(nn1, [[1, 1]]); // should output ~1
+    
+    
+### If you're looking for some copy-and-paste markup to get going, this is all it takes:
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <!-- NN needs vcore -->
+            <script src="//treetopflyer.github.com/vcore/lib.js"></script>
+            <script src="//treetopflyer.github.com/NN/lib.js"></script>
+            <script>
+    			var ts1 = NN.TrainingSet.Create();
+    			NN.TrainingSet.AddCloud(ts1, [1, 0, 0], M.Box([[0, 0], [0.4, 1.0]], 10));
+    			NN.TrainingSet.AddCloud(ts1, [1, 0, 0], M.Box([[0, 1], [1.5, 1.4]], 10));
+    			NN.TrainingSet.AddCloud(ts1, [0, 1, 0], M.Box([[0.8, 0], [1.0, 0.7]], 10));
+    			NN.TrainingSet.AddCloud(ts1, [0, 1, 0], M.Box([[0, -0.3], [1.0, -0.1]], 10));
+    			NN.TrainingSet.AddCloud(ts1, [0, 0, 1], M.Box([[0, 1.5], [1.0, 1.8]], 10));
+    
+    			var n1 = NN.Network.Create(2, 5, 3);
+    			NN.Network.Batch(n1, ts1, 1000);
+    			console.log(NN.Network.Observe(n1, [[0.1, 0.5], [0.8, 1.5]]));
+    			/*
+    			    should output two 3d label vectors.
+    			    one around [1, 0, 0]
+    			    and the second around [0, 0, 1]
+    			*/
+            </script>
+        </body>
+    </html>
