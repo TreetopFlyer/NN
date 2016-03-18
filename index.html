@@ -359,14 +359,19 @@ NN.Layer.Adjust = function(inLayer, inLearningRate)
         deltas = [];
         
         /* For the Ith vector in the batch... */
+        /* Change the Jth member of Forward.Matrix by:
+            the Ith input vector, multiplied by the Jth component of the Ith Backward.StageDerivative (the input error times the output derivative, pre-calculated above),
+            factoring in the learning rate and batch size */
+            /*
         vector = inLayer.Forward.StageInput[i];
         for(j=0; j<inLayer.Forward.Matrix.length; j++)
         {
-            /* Change the Jth member of Forward.Matrix by:
-            the Ith input vector, multiplied by the Jth component of the Ith Backward.StageDerivative (the input error times the output derivative, pre-calculated above),
-            factoring in the learning rate and batch size */
+            
             deltas[j] = V.Scale(vector, (inLayer.Backward.StageDerivative[i][j] * inLearningRate) / batchSize);
         }
+        */
+        
+        deltas = M.Outer(inLayer.Backward.StageDerivative[i], inLayer.Forward.StageInput[i])
         
         inLayer.Forward.Matrix = M.Subtract(inLayer.Forward.Matrix, deltas);
     }
@@ -397,18 +402,18 @@ NN.Layer.Stochastic = function(inLayer, inTrainingSet, inIterations)
 
 var ts1 = NN.TrainingSet.Create();
 
-NN.TrainingSet.AddCloud(ts1, [1], M.Box([[0, 0], [0.4, 1.0]], 5));// black upright
-NN.TrainingSet.AddCloud(ts1, [1], M.Box([[0, 1], [1.5, 1.4]], 5));
+NN.TrainingSet.AddCloud(ts1, [1, 1], M.Box([[0, 0], [0.4, 1.0]], 5));// black upright
+NN.TrainingSet.AddCloud(ts1, [1, 1], M.Box([[0, 1], [1.5, 1.4]], 5));
 
-NN.TrainingSet.AddCloud(ts1, [0], M.Box([[0.8, 0], [1.0, 0.7]], 5));
-NN.TrainingSet.AddCloud(ts1, [0], M.Box([[0, -0.3], [1.0, -0.1]], 5));
+NN.TrainingSet.AddCloud(ts1, [0, 0], M.Box([[0.8, 0], [1.0, 0.7]], 5));
+NN.TrainingSet.AddCloud(ts1, [0, 0], M.Box([[0, -0.3], [1.0, -0.1]], 5));
 
-NN.TrainingSet.AddCloud(ts1, [0], M.Box([[0, 1.5], [1.0, 1.8]], 5));
+NN.TrainingSet.AddCloud(ts1, [0, 0], M.Box([[0, 1.5], [1.0, 1.8]], 5));
 
 
 ts1.Input = M.GlobalToLocal(ts1.Input, M.Bounds(ts1.Input));
 
-var n1 = NN.Network.Create(2, 10, 4, 1);
+var n1 = NN.Network.Create(2, 10, 4, 2);
 n1.LearningRate = 0.2;
 var pb1 = NN.Network.Batch(n1, ts1, 20000);
 NN.Network.Observe(n1, ts1.Input);
