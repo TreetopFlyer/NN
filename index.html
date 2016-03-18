@@ -249,12 +249,13 @@ NN.Layer.Adjust = function(inLayer, inLearningRate)
     var deltas;
     var vector;
     var scalar;
-    var batchSize = inLayer.Forward.StageInput.length;
     var i, j;
     
-    for(i=0; i<batchSize; i++)
+    for(i=0; i<inLayer.Forward.StageInput.length; i++)
     {
-        deltas = M.Outer(inLayer.Backward.StageDerivative[i], inLayer.Forward.StageInput[i]);
+        deltas = M.Outer(inLayer.Forward.StageInput[i], inLayer.Backward.StageDerivative[i]);
+        deltas = M.Scale(deltas, inLearningRate);
+        
         inLayer.Forward.Matrix = M.Subtract(inLayer.Forward.Matrix, deltas);
     }
 };
@@ -286,7 +287,7 @@ NN.Network.Create = function()
     var i;    
     
     obj.Layers = [];
-    obj.LearningRate = 0.1;
+    obj.LearningRate = 0.8;
     obj.Error = [];
     
     for(i=0; i<arguments.length-1; i++)
