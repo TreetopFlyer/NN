@@ -115,5 +115,5 @@ Static Method: Present the Network inNetwork with the un-labeled data inData. Re
     			    and the second around [0, 0, 1]
     			*/
             </script>
-        </body>
+        </head>
     </html>
