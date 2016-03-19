@@ -74,7 +74,7 @@ NN.Layer.Create = function(sizeIn, sizeOut)
 };
 NN.Layer.Forward = function(inLayer, inInput)
 {
-    inLayer.Forward.StageInput = M.Pad(M.Clone(inInput)); // Pad the input
+    inLayer.Forward.StageInput = M.Pad(inInput); // Pad the input
     inLayer.Forward.StageAffine = M.Transform(inLayer.Forward.Matrix, inLayer.Forward.StageInput);
     inLayer.Forward.StageSigmoid = M.Sigmoid(inLayer.Forward.StageAffine);
     
