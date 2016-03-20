@@ -13,7 +13,6 @@ NN.TrainingSet.Create = function()
     NN.TrainingSet.Instances.push(obj);
     return obj;
 };
-
 NN.TrainingSet.AddPoint = function(inTrainingSet, inType, inData)
 {
     inTrainingSet.Input.push(inData);
@@ -159,7 +158,7 @@ NN.Network.Create = function()
 };
 NN.Network.Observe = function(inNetwork, inBatch)
 {
-      var input = inBatch;
+      var input = M.Clone(inBatch);
       var i;
       for(i=0; i<inNetwork.Layers.length; i++)
       {

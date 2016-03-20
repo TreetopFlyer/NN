@@ -2,7 +2,7 @@
 <html>
     <head>
         <script src="//treetopflyer.github.com/vcore/lib.js"></script>
-        <script src="//treetopflyer.github.com/NN/lib.js"></script>
+        <script src="lib.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
         <style>
 body
@@ -138,6 +138,8 @@ Graph.Create = function(inJQParent)
     return obj;   
 }
         </script>
+        
+        
         <script>
 
 var ts1 = NN.TrainingSet.Create();
@@ -152,12 +154,14 @@ var n1 = NN.Network.Create(2, 5, 3);
 NN.Network.Batch(n1, ts1, 1000);
 NN.Network.Observe(n1, ts1.Input);
 
+
 var g1 = Graph.Create($("body"));
 g1.Points(ts1);
 
 var g3b = Graph.Create($("body"));
 g3b.Points(ts1);
 g3b.Move(n1.Layers[1].Forward.StageSigmoid);
+
 
 
         </script>
