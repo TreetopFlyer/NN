@@ -7,7 +7,7 @@
         <style>
 body
 {
-    margin:100px;
+    margin:0;
     background:#aaa;    
 }
 .Graph
@@ -15,6 +15,7 @@ body
     position:relative;
     float:left;
     border:1px solid #000;
+    margin:50px;
     
     perspective:500px;
     transform-style: preserve-3d;
@@ -139,28 +140,155 @@ Graph.Create = function(inJQParent)
 }
         </script>
         
+        <script>
+var Rasterizer = {};
+Rasterizer.Instances = [];
+Rasterizer.Create = function(inJQCanvas)
+{
+	var obj = {};
+	
+	obj.Math = {};
+	obj.Math.Min = [0, 0];
+	obj.Math.Max = [1, 1];
+	obj.JQ = {};
+	obj.JQ.Canvas = inJQCanvas;
+	
+	obj.Canvas = obj.JQ.Canvas.get(0).getContext("2d");
+	
+	Rasterizer.Instances.push(obj);
+	return obj;
+};
+Rasterizer.FillStyle = function(inRasterizer, inR, inG, inB)
+{
+	inR = Math.floor(inR*255);
+	inG = Math.floor(inG*255);
+	inB = Math.floor(inB*255);
+	inRasterizer.Canvas.fillStyle = "rgba("+inR+","+inG+","+inB+",255)";				
+};
+Rasterizer.ColorClear = function(inRasterizer, inR, inG, inB)
+{
+	Rasterizer.FillStyle(inRasterizer, inR, inG, inB);
+	inRasterizer.Canvas.fillRect( 0, 0, inRasterizer.Canvas.canvas.width, inRasterizer.Canvas.canvas.height);
+};
+Rasterizer.ColorSet = function(inRasterizer, inR, inG, inB, inX, inY)
+{
+	Rasterizer.FillStyle(inRasterizer, inR, inG, inB);
+	inRasterizer.Canvas.fillRect( inX, inY, 1, 1 );
+};
+Rasterizer.Iterate = function(inRasterizer, inFunction)
+{
+	var width = inRasterizer.Canvas.canvas.width;
+	var height = inRasterizer.Canvas.canvas.height
+	var xPos, yPos;
+	var xPerc, yPerc;
+	var xMath, yMath;
+	var output;
+	
+	for(xPos = 0; xPos<width; xPos++)
+	{
+		xPerc = xPos/width;
+		xMath = inRasterizer.Math.Min[0] + xPerc*(inRasterizer.Math.Max[0] - inRasterizer.Math.Min[0]);
+		
+		for(yPos=0; yPos<height; yPos++)
+		{
+			yPerc = yPos/height;
+			yMath = inRasterizer.Math.Min[1] + yPerc*(inRasterizer.Math.Max[1] - inRasterizer.Math.Min[1]);
+			
+			output = inFunction(xMath, yMath);
+			if(output)
+			{
+				Rasterizer.ColorSet(inRasterizer, output[0], output[1], output[2], xPos, yPos)
+			}
+		}
+	}
+};
+Rasterizer.IterateRow = function(inRasterizer, inStart, inStop, inFunction)
+{
+	var width = inRasterizer.Canvas.canvas.width;
+	var height = inRasterizer.Canvas.canvas.height;
+	var xPos, yPos;
+	var xPerc, yPerc;
+	var xMath, yMath;
+	var output;
+	
+	
+	
+	for(xPos = 0; xPos<width; xPos++)
+	{
+		xPerc = xPos/width;
+		xMath = inRasterizer.Math.Min[0] + xPerc*(inRasterizer.Math.Max[0] - inRasterizer.Math.Min[0]);
+		
+		for(yPos=inStart; yPos<inStop; yPos++)
+		{
+			yPerc = yPos/height;
+			yMath = inRasterizer.Math.Min[1] + yPerc*(inRasterizer.Math.Max[1] - inRasterizer.Math.Min[1]);
+			
+			output = inFunction(xMath, yMath);
+			if(output)
+			{
+				Rasterizer.ColorSet(inRasterizer, output[0], output[1], output[2], xPos, yPos)
+			}
+		}
+	}
+};  
+        </script>
+        
+        <canvas class="Rasterizer" width="100" height="100"></canvas>
+        
         
         <script>
+
+
+
 
 var ts1 = NN.TrainingSet.Create();
 
 NN.TrainingSet.AddCloud(ts1, [1, 0, 0], M.Box([[0, 0], [0.4, 1.0]], 10));
 NN.TrainingSet.AddCloud(ts1, [1, 0, 0], M.Box([[0, 1], [1.5, 1.4]], 10));
+
+NN.TrainingSet.AddCloud(ts1, [1, 0, 0], M.Box([[1.5, 0], [1.7, 0.7]], 10));
+
 NN.TrainingSet.AddCloud(ts1, [0, 1, 0], M.Box([[0.8, 0], [1.0, 0.7]], 10));
 NN.TrainingSet.AddCloud(ts1, [0, 1, 0], M.Box([[0, -0.3], [1.0, -0.1]], 10));
-NN.TrainingSet.AddCloud(ts1, [0, 0, 1], M.Box([[0, 1.5], [1.0, 1.8]], 10));
+NN.TrainingSet.AddCloud(ts1, [0, 1, 0], M.Box([[0, 1.5], [1.0, 1.8]], 10));
+ts1.Input = M.GlobalToLocal(ts1.Input, M.Bounds(ts1.Input));
 
-var n1 = NN.Network.Create(2, 5, 3);
-NN.Network.Batch(n1, ts1, 1000);
+var n1 = NN.Network.Create(2, 3, 3);
+n1.LearningRate = 0.1;
+NN.Network.Batch(n1, ts1, 5000);
+
+
+var jqCanvas = $("canvas.Rasterizer");
+jqCanvas.css({position:"absolute", width:"100%", height:"100%", opacity:"0.4"});
+
+var g0 = Graph.Create($("body"));
+g0.JQ.Center.append(jqCanvas);
+g0.Points(ts1);
+
+var r1 = Rasterizer.Create(jqCanvas);
+Rasterizer.Iterate(r1, function(inX, inY)
+{
+    return NN.Network.Observe(n1, [[inX, inY]])[0];
+});
+
+
 NN.Network.Observe(n1, ts1.Input);
-
-
 var g1 = Graph.Create($("body"));
 g1.Points(ts1);
+g1.Move(M.GlobalToLocal(n1.Layers[0].Forward.StageAffine, M.Bounds( n1.Layers[0].Forward.StageAffine )));
 
-var g3b = Graph.Create($("body"));
-g3b.Points(ts1);
-g3b.Move(n1.Layers[1].Forward.StageSigmoid);
+var g2 = Graph.Create($("body"));
+g2.Points(ts1);
+g2.Move(n1.Layers[0].Forward.StageSigmoid);
+
+
+var g3 = Graph.Create($("body"));
+g3.Points(ts1);
+g3.Move(M.GlobalToLocal(n1.Layers[1].Forward.StageAffine, M.Bounds(n1.Layers[1].Forward.StageAffine)));
+
+var g4 = Graph.Create($("body"));
+g4.Points(ts1);
+g4.Move(n1.Layers[1].Forward.StageSigmoid);
 
 
 
